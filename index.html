@@ -1,39 +1,410 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Моё мини-приложение</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding-top: 50px; }
-    input { padding: 8px; font-size: 16px; margin-bottom: 10px; width: 200px; }
-    button { padding: 10px 20px; font-size: 16px; margin: 5px; cursor: pointer; }
-    #output { margin-top: 20px; font-size: 18px; font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Таро — расклад</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1530;
+    --bg-deep: #120e24;
+    --card-back: #3d2a4a;
+    --card-back-2: #4a3358;
+    --gold: #c9a876;
+    --gold-bright: #e0c396;
+    --parchment: #e8dcc8;
+    --parchment-dim: #b3a890;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top, var(--bg) 0%, var(--bg-deep) 100%);
+    color: var(--parchment);
+    font-family: 'Inter', sans-serif;
+    padding: 32px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-size: 38px;
+    margin: 0 0 8px;
+    color: var(--gold-bright);
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--parchment-dim);
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+  }
+
+  .spread-choice {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .spread-btn {
+    background: transparent;
+    border: 1px solid rgba(201, 168, 118, 0.4);
+    color: var(--parchment);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .spread-btn:hover, .spread-btn.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 118, 0.12);
+    color: var(--gold-bright);
+  }
+
+  .deck-area {
+    perspective: 1000px;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    min-height: 220px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .card-slot {
+    width: 130px;
+    height: 200px;
+    position: relative;
+  }
+
+  .card-label {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+
+  .card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.9s cubic-bezier(0.4, 0.1, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .card.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .card-back {
+    background:
+      repeating-linear-gradient(135deg, var(--card-back), var(--card-back) 8px, var(--card-back-2) 8px, var(--card-back-2) 16px);
+    border: 1px solid rgba(201, 168, 118, 0.5);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .card-back::after {
+    content: "✦";
+    color: var(--gold);
+    font-size: 28px;
+    opacity: 0.6;
+  }
+
+  .card-front {
+    background: linear-gradient(160deg, #2a2140, #1f1832);
+    border: 1px solid var(--gold);
+    transform: rotateY(180deg);
+    box-shadow: 0 0 0 rgba(201,168,118,0);
+    transition: box-shadow 0.6s ease 0.5s;
+  }
+
+  .card.flipped .card-front {
+    box-shadow: 0 0 24px rgba(201, 168, 118, 0.35);
+  }
+
+  .card-symbol {
+    font-size: 34px;
+    color: var(--gold-bright);
+    margin-bottom: 8px;
+  }
+
+  .card-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--parchment);
+    margin-bottom: 4px;
+  }
+
+  .card-position {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.7;
+  }
+
+  .meanings {
+    max-width: 360px;
+    margin-top: 24px;
+    display: none;
+  }
+
+  .meanings.visible {
+    display: block;
+  }
+
+  .meaning-block {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(201, 168, 118, 0.15);
+  }
+
+  .meaning-block:last-child {
+    border-bottom: none;
+  }
+
+  .meaning-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    color: var(--gold-bright);
+    margin-bottom: 6px;
+  }
+
+  .meaning-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--parchment-dim);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .action-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .action-btn:active {
+    transform: scale(0.96);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color: var(--bg-deep);
+    font-weight: 600;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(232, 220, 200, 0.3);
+    color: var(--parchment-dim);
+  }
+
+  .hidden { display: none !important; }
+</style>
 </head>
 <body>
-  <h1>Привет из мини-приложения! 👋</h1>
 
-  <p>Как тебя зовут?</p>
-  <input type="text" id="nameInput" placeholder="Введи имя">
-  <br>
-  <button onclick="showGreeting()">Показать приветствие</button>
-  <button onclick="sendToBot()">Отправить боту</button>
+  <div class="eyebrow">Личный расклад</div>
+  <h1>✦ Таро ✦</h1>
+  <p class="subtitle">«Карты — не предсказание, а зеркало. Выбери расклад и загляни в него.»</p>
 
-  <div id="output"></div>
+  <div class="spread-choice">
+    <button class="spread-btn active" id="btnSingle" onclick="selectSpread('single')">Карта дня</button>
+    <button class="spread-btn" id="btnThree" onclick="selectSpread('three')">Прошлое · Настоящее · Будущее</button>
+  </div>
 
-  <script>
-    function showGreeting() {
-      const name = document.getElementById("nameInput").value;
-      const output = document.getElementById("output");
-      output.innerText = "Приятно познакомиться, " + name + "! 🎉";
+  <div class="deck-area" id="deckArea"></div>
+
+  <div class="meanings" id="meanings"></div>
+
+  <div class="actions">
+    <button class="action-btn btn-primary" id="drawBtn" onclick="drawCards()">Разложить карты</button>
+    <button class="action-btn btn-secondary hidden" id="sendBtn" onclick="sendToBot()">Отправить боту</button>
+  </div>
+
+<script>
+  const CARDS = [
+    {name: "Шут", symbol: "✧", upright: "Новое начало, лёгкость, готовность прыгнуть в неизвестность не оглядываясь. Сейчас важнее довериться пути, чем знать все ответы заранее.", reversed: "Опрометчивость, страх сделать первый шаг или, наоборот, шаг без всякой подготовки. Стоит на секунду остановиться и понять, куда именно ты бежишь."},
+    {name: "Маг", symbol: "✦", upright: "У тебя уже есть всё необходимое — воля, слова, ресурсы. Вопрос не в нехватке инструментов, а в том, решишься ли ты ими воспользоваться.", reversed: "Манипуляция, распылённая энергия, талант, который используется не по адресу. Проверь, не обманываешь ли ты сам себя красивыми словами."},
+    {name: "Верховная Жрица", symbol: "☾", upright: "Интуиция сильнее логики в этом вопросе. Ответ уже внутри тебя — тишина подскажет больше, чем разговоры.", reversed: "Ты игнорируешь внутренний голос или скрываешь правду — от других или от себя. Пора перестать притворяться, что не замечаешь очевидного."},
+    {name: "Императрица", symbol: "✿", upright: "Изобилие, забота, творческий рост. То, что ты взращиваешь сейчас — отношения, идею, дело — начинает приносить плоды.", reversed: "Истощение от чрезмерной отдачи, застой в творчестве. Пора сначала позаботиться о себе, прежде чем заботиться обо всех вокруг."},
+    {name: "Император", symbol: "♦", upright: "Структура, дисциплина, твёрдая рука. Порядок, который ты наводишь сейчас, даст устойчивость надолго.", reversed: "Излишний контроль или, напротив, потеря опоры. Где-то жёсткость мешает, а не помогает."},
+    {name: "Иерофант", symbol: "⌂", upright: "Традиция, наставник, проверенный путь. Иногда мудрее пойти по дороге, которую уже кто-то прошёл, чем изобретать заново.", reversed: "Бунт против правил ради самого бунта, или наоборот — слепое следование чужим догмам без своего мнения."},
+    {name: "Влюблённые", symbol: "♡", upright: "Выбор по зову сердца, настоящая близость, союз, в котором оба остаются собой. Это карта решения, а не просто чувства.", reversed: "Раздвоенность, несогласованность ценностей, выбор из страха остаться одному, а не из любви."},
+    {name: "Колесница", symbol: "➤", upright: "Уверенное движение вперёд через противоречия. Ты держишь в руках вожжи двух разных сил и всё равно едешь туда, куда нужно.", reversed: "Потеря направления, борьба с самим собой вместо движения к цели. Слишком много воли, направленной не туда."},
+    {name: "Сила", symbol: "∞", upright: "Не грубая, а тихая сила — терпение, мягкое укрощение своих же страхов. Настоящая власть здесь — над собой, не над обстоятельствами.", reversed: "Сомнение в себе, ощущение бессилия, попытка совладать с собой через жёсткость, которая не работает."},
+    {name: "Отшельник", symbol: "✷", upright: "Время побыть одному, чтобы услышать себя. Ответ придёт не в шуме, а в паузе, которую ты наконец себе разрешишь.", reversed: "Изоляция, которая уже не помогает, а изматывает. Пора выйти из внутренней пещеры и снова заговорить с миром."},
+    {name: "Колесо Фортуны", symbol: "↻", upright: "Поворот судьбы, цикл, который меняется сам по себе. Не всё в твоих руках — и это хорошая новость, потому что колесо крутится в твою пользу.", reversed: "Ощущение, что удача отвернулась, повторяющийся сценарий, из которого не получается выйти. Присмотрись — узор всё же можно изменить."},
+    {name: "Справедливость", symbol: "⚖", upright: "Причина и следствие, честный расчёт. То, что происходит сейчас — прямое следствие решений, принятых раньше.", reversed: "Несправедливость, уход от ответственности, перекос в балансе давать-и-брать, который давно пора выровнять."},
+    {name: "Повешенный", symbol: "↕", upright: "Пауза, взгляд на ситуацию с непривычного ракурса. Иногда единственный способ продвинуться — перестать толкать и просто подождать.", reversed: "Бессмысленная жертва, застревание в ожидании, которое уже не приносит нового понимания."},
+    {name: "Смерть", symbol: "✳", upright: "Не конец в буквальном смысле, а завершение целого этапа, чтобы освободить место новому. Сопротивляться этому — больнее, чем отпустить.", reversed: "Страх перемен, цепляние за то, что уже отжило своё. Переход всё равно случится — вопрос только в том, через боль или через принятие."},
+    {name: "Умеренность", symbol: "≈", upright: "Баланс, смешение крайностей в нечто новое и цельное. Спешка сейчас всё испортит — нужное получится только через терпеливое смешивание.", reversed: "Перекос в одну сторону, нетерпение, попытка ускорить то, что требует времени."},
+    {name: "Дьявол", symbol: "▲▼", upright: "Привязанность, зависимость, соблазн, от которого не так просто отказаться. Важно увидеть цепи честно — тогда легче их снять.", reversed: "Первые шаги к освобождению от того, что держит в плену — привычки, отношений, страха."},
+    {name: "Башня", symbol: "⚡", upright: "Внезапное разрушение старой конструкции — резко, но по делу. То, что рушится, всё равно держалось на трещине, которую давно стоило заметить.", reversed: "Разрушение, которого пытаются избежать любой ценой, хотя оно уже неизбежно. Иногда лучше пережить бурю сразу, чем оттягивать её."},
+    {name: "Звезда", symbol: "✶", upright: "Надежда после трудного периода, тихая вера в то, что дальше будет легче. Сейчас время не форсировать, а довериться процессу.", reversed: "Потеря веры в себя, ощущение, что свет погас. Он не погас — просто временно не виден."},
+    {name: "Луна", symbol: "☽", upright: "Неясность, скрытые страхи, интуиция, которая говорит образами, а не словами. Не всё нужно понимать разумом прямо сейчас.", reversed: "Иллюзии рассеиваются, тревога начинает проясняться. То, что пугало в темноте, при свете оказывается меньше, чем казалось."},
+    {name: "Солнце", symbol: "☀", upright: "Ясность, радость, успех без притворства. Это одна из самых лёгких карт колоды — всё складывается просто и честно.", reversed: "Временная тень на радостном событии, чуть приглушённый успех. Свет всё равно есть — просто пока за тучей."},
+    {name: "Суд", symbol: "↑", upright: "Пробуждение, честный итог, зов, который больше нельзя игнорировать. Пора ответить на вопрос, который ты откладывал.", reversed: "Самокритика без прощения, страх подведения итогов. Суровее всего ты судишь себя — и напрасно."},
+    {name: "Мир", symbol: "◯", upright: "Завершение большого цикла, целостность, ощущение, что всё встало на свои места. Это финал, которым можно гордиться.", reversed: "Незавершённость, ощущение, что чего-то не хватает для полноты картины. Ещё один маленький шаг — и круг замкнётся."}
+  ];
+
+  let currentSpread = 'single';
+  let drawnCards = [];
+
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  function selectSpread(type) {
+    currentSpread = type;
+    document.getElementById('btnSingle').classList.toggle('active', type === 'single');
+    document.getElementById('btnThree').classList.toggle('active', type === 'three');
+    resetBoard();
+  }
+
+  function resetBoard() {
+    drawnCards = [];
+    document.getElementById('deckArea').innerHTML = '';
+    document.getElementById('meanings').classList.remove('visible');
+    document.getElementById('meanings').innerHTML = '';
+    document.getElementById('sendBtn').classList.add('hidden');
+    document.getElementById('drawBtn').classList.remove('hidden');
+    buildSlots();
+  }
+
+  function buildSlots() {
+    const area = document.getElementById('deckArea');
+    const count = currentSpread === 'single' ? 1 : 3;
+    const labels = currentSpread === 'single' ? [''] : ['Прошлое', 'Настоящее', 'Будущее'];
+    for (let i = 0; i < count; i++) {
+      const wrap = document.createElement('div');
+      let labelHtml = labels[i] ? `<div class="card-label">${labels[i]}</div>` : '';
+      wrap.innerHTML = `
+        ${labelHtml}
+        <div class="card-slot">
+          <div class="card" id="card-${i}">
+            <div class="card-face card-back"></div>
+            <div class="card-face card-front">
+              <div class="card-symbol" id="symbol-${i}"></div>
+              <div class="card-name" id="name-${i}"></div>
+              <div class="card-position" id="position-${i}"></div>
+            </div>
+          </div>
+        </div>`;
+      area.appendChild(wrap);
+    }
+  }
+
+  function pickRandomCard() {
+    const card = CARDS[Math.floor(Math.random() * CARDS.length)];
+    const reversed = Math.random() < 0.3;
+    return {
+      name: card.name,
+      symbol: card.symbol,
+      reversed: reversed,
+      meaning: reversed ? card.reversed : card.upright
+    };
+  }
+
+  function drawCards() {
+    const count = currentSpread === 'single' ? 1 : 3;
+    drawnCards = [];
+    for (let i = 0; i < count; i++) {
+      drawnCards.push(pickRandomCard());
     }
 
-    function sendToBot() {
-      const name = document.getElementById("nameInput").value;
-      const data = { name: name };
-      Telegram.WebApp.sendData(JSON.stringify(data));
+    drawnCards.forEach((c, i) => {
+      document.getElementById(`symbol-${i}`).textContent = c.symbol;
+      document.getElementById(`name-${i}`).textContent = c.name;
+      document.getElementById(`position-${i}`).textContent = c.reversed ? 'перевёрнутая' : 'прямая';
+      setTimeout(() => {
+        document.getElementById(`card-${i}`).classList.add('flipped');
+      }, i * 250);
+    });
+
+    setTimeout(() => showMeanings(), count * 250 + 500);
+    document.getElementById('drawBtn').classList.add('hidden');
+  }
+
+  function showMeanings() {
+    const labels = currentSpread === 'single' ? ['Карта дня'] : ['Прошлое', 'Настоящее', 'Будущее'];
+    const box = document.getElementById('meanings');
+    box.innerHTML = drawnCards.map((c, i) => `
+      <div class="meaning-block">
+        <div class="meaning-title">${labels[i]}: ${c.symbol} ${c.name} (${c.reversed ? 'перевёрнутая' : 'прямая'})</div>
+        <div class="meaning-text">${c.meaning}</div>
+      </div>
+    `).join('');
+    box.classList.add('visible');
+    document.getElementById('sendBtn').classList.remove('hidden');
+  }
+
+  function sendToBot() {
+    const payload = { spread: currentSpread, cards: drawnCards };
+    if (tg) {
+      tg.sendData(JSON.stringify(payload));
+    } else {
+      alert('Открой это через кнопку в Telegram-боте, чтобы отправить расклад.');
     }
-  </script>
+  }
+
+  resetBoard();
+</script>
 </body>
 </html>
